@@ -1,5 +1,5 @@
 class player_stats:
-    def __init__(self, player_name, player_age, player_team):
+    def __init__(self, player_name, player_team):
         self.player_name = player_name
         self.player_team = player_team
 
@@ -8,8 +8,10 @@ class player_stats:
         print(f"Player Team: {self.player_team}")
 
     def prop_over_probability(self, prop, betting_line): # probability of a player prop being over a certain number
+
         # machine learning model to predict the probability of a player prop
-        pass
+
+        return 0.5 # placeholder for testing
     
     def prop_under_probability(self, prop, betting_line): # probability of a player prop being under a certain number
         return 1 - self.prop_over_probability(prop, betting_line)
@@ -22,15 +24,14 @@ class player_stats:
             expected_profit=100/-over_betting_odds
         else:
             expected_profit=over_betting_odds/100
-        
+                
         if under_betting_odds<0:
             expected_loss=100/-under_betting_odds
         else:   
             expected_loss=under_betting_odds/100
         
-
         ev_over_prop=(probability_over*expected_profit)-(probability_under*expected_loss)
-        ev_under_prop=(probability_under*expected_profit)-(probability_over*expected_loss)
+        ev_under_prop=(probability_under*expected_loss)-(probability_over*expected_profit)
 
         if ev_over_prop>0 and ev_under_prop>0:
             print(f"Both the over and under have a positive expected value")
@@ -46,7 +47,6 @@ class player_stats:
         else:
             return "No positive expected value"
 
-
-
-        
-
+# Testing Accuracy of the Expected Value Calculator
+test_case_1=player_stats("Lebron James", "Los Angeles Lakers").expected_value_calculator('points', 25.5, 140, -120)
+assert test_case_1 == "The over has an expected value of 0.28333333333333327"
