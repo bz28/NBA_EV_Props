@@ -1,15 +1,16 @@
 import sys
 from nba_api.stats.static import players
+from nba_api.stats.endpoints import playergamelog
 from nba_api.stats.endpoints import playerdashboardbyyearoveryear
-
 
 
 # Fetch all active NBA players
 active_players = players.get_active_players()
-player_dictionary =  {}
+player_dictionary = {}
 # Print each player's name and ID
 for player in active_players:
     player_dictionary[player['full_name']] = player['id']
+
     if player['full_name'] == 'Jalen Green':
         # Fetch player dashboard data by year over year
         dashboard = playerdashboardbyyearoveryear.PlayerDashboardByYearOverYear(player_id=player['id'])
@@ -31,42 +32,43 @@ for player in active_players:
             ast = stats_2022_23['AST'] / stats_2022_23['GP']
             print(f"Jalen Green 2022-23 Stats - PPG: {ppg}, REB: {reb}, AST: {ast}")
 
-        
 
-        
-        
-        
-        
-            # Fetch team's win percentage
-        '''
-        
-        
-        print(season_dict)
-        for game_data in season_dict:
-            if game_data['SEASON_ID'] == '2024-25':
-                # Check if the game is home or away
-                if 'vs.' in game_data['MATCHUP']:
-                    home_game = True
-                else:
-                    home_game = False
-                team_id = game_data['TEAM_ID']
-                team_dashboard = teamdashboardbylastngames.TeamDashboardByLastNGames(team_id=team_id)
-                team_stats = team_dashboard.get_data_frames()[0]  # Assuming the first DataFrame contains team stats
-                win_percentage = team_stats['W_PCT'].iloc[0]
 
-                # Display stats based on conditions
-                print(f"Game: {game_data['MATCHUP']}, Date: {game_data['GAME_DATE']}")
-                if home_game:
-                    print(f"Home Game Stats - PTS: {game_data['PTS']}, REB: {game_data['REB']}, AST: {game_data['AST']}")
-                else:
-                    print(f"Away Game Stats - PTS: {game_data['PTS']}, REB: {game_data['REB']}, AST: {game_data['AST']}")
 
-                if win_percentage > 0.5:
-                    print(f"High Win% Stats - PTS: {game_data['PTS']}, REB: {game_data['REB']}, AST: {game_data['AST']}")
-                else:
-                    print(f"Low Win% Stats - PTS: {game_data['PTS']}, REB: {game_data['REB']}, AST: {game_data['AST']}")
 
-        '''
+
+    if player['full_name'] == 'Amen Thompson':
+        # Fetch player game logs for the 2024-25 season
+
+
+
+
+
+
+
+
+
+
+    
+
+
+        game_logs = playergamelog.PlayerGameLog(player_id=player['id'], season='2024-25')
+        games = game_logs.get_data_frames()[0]  # The first DataFrame contains the game logs
+
+        # Iterate through each game log
+        away_games = []
+        home_games = []
+        for index, game in games.iterrows():
+            print(f"Game Date: {game['GAME_DATE']}")
+            print(f"Opponent: {game['MATCHUP']}")
+            if "@" in game['MATCHUP']:
+                away_games.append(game)
+            else:
+                home_games.append(game)
+            print(f"Points: {game['PTS']}, Rebounds: {game['REB']}, Assists: {game['AST']}")
+            print("-----")
+
+
 
 
 
