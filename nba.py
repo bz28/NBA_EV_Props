@@ -69,11 +69,30 @@ def last_five_games(player_name, game_id, games, season_stat):
         return 2
 
 
-def game_stats(player_name):
+
+def home_or_away(player_name):
     player_id = player_dictionary[player_name]
     game_logs = playergamelog.PlayerGameLog(player_id=player_id, season='2024-25')
     games = game_logs.get_data_frames()[0]  # The first DataFrame contains the game logs
-    season_stat = season_stats(player_name)
+    games = games.iloc[::-1].reset_index(drop=True)
+    for index, game in games.iterrows():
+        matchup = game['MATCHUP']
+
+        # Determine if the game is home or away
+        home_or_away = "away" if "@" in matchup else "home"
+
+        # home = 1; away = 0
+        home_or_away_parameter = 1 if home_or_away == 'home' else 0
+
+        # Display game details
+        print(f"Home/Away: {home_or_away_parameter}")
+        return home_or_away_parameter
+
+
+def opponent_win_percentage(player_name): 
+    player_id = player_dictionary[player_name]
+    game_logs = playergamelog.PlayerGameLog(player_id=player_id, season='2024-25')
+    games = game_logs.get_data_frames()[0]  # The first DataFrame contains the game logs
     last_game_stats = None
     games = games.iloc[::-1].reset_index(drop=True)
     for index, game in games.iterrows():
@@ -83,7 +102,6 @@ def game_stats(player_name):
         opponent_id = team_dictionary[opponent]
 
         # Determine if the game is home or away
-        home_or_away = "away" if "@" in matchup else "home"
 
         team_stats = teamyearbyyearstats.TeamYearByYearStats(team_id=opponent_id)
         team_stats_df = team_stats.get_data_frames()[0]
@@ -106,9 +124,39 @@ def game_stats(player_name):
             'AST': game['AST']
         }
 
-        home_or_away_parameter = 1 if home_or_away == 'home' else 0
+        # winning season = 1; losing season = 0
+        win_percentage_parameter = 1 if win_percentage > 0.5 else 0 
 
-        win_percentage_parameter = 1 if win_percentage > 0.5 else 0
+        
+        # Display game details
+        print(f"Opponent Win Percentage: {win_percentage}")
+        return win_percentage_parameter
+        
+
+def game_stats(player_name):
+    player_id = player_dictionary[player_name]
+    game_logs = playergamelog.PlayerGameLog(player_id=player_id, season='2024-25')
+    games = game_logs.get_data_frames()[0]  # The first DataFrame contains the game logs
+    season_stat = season_stats(player_name)
+    last_game_stats = None
+    games = games.iloc[::-1].reset_index(drop=True)
+    for index, game in games.iterrows():
+        game_date = game['GAME_DATE']
+        matchup = game['MATCHUP']
+        opponent = matchup.split(' ')[2] if '@' in matchup else matchup.split(' ')[2]
+
+        if last_game_stats:
+            print(f"Last Game Stats: {last_game_stats}")
+            print(f"Date: {last_game_stats['GAME_DATE']}, Points: {last_game_stats['PTS']}, Rebounds: {last_game_stats['REB']}, Assists: {last_game_stats['AST']}")
+            print("-----")
+
+        last_game_stats = {
+            'GAME_DATE': game_date,
+            'PTS': game['PTS'],
+            'REB': game['REB'],
+            'AST': game['AST']
+        }
+
 
         last_game_bad_parameter = last_game_bad(player_name, last_game_stats, season_stat)
        
@@ -118,14 +166,12 @@ def game_stats(player_name):
         # Display game details
         print(f"Last 5 Games: {last_five_parameter}")
         print(f"Last Game Bad: {last_game_bad_parameter}")
-        print(f"Win Percentage: {win_percentage_parameter}")
-        print(f"Home/Away: {home_or_away_parameter}")
         print(f"Game Date: {game_date}")
         print(f"Opponent: {opponent}")
         
         print(f"Points: {game['PTS']}, Rebounds: {game['REB']}, Assists: {game['AST']}")
-        print(f"Opponent Win Percentage: {win_percentage}")
         print("-----")
+
 
 # Example usage
 game_stats('Jalen Green')
