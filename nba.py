@@ -30,14 +30,15 @@ def season_stats(player_name):
         return [0, 0, 0]
 
 def last_game_bad(player_name, stats, season_stat):
-    if  ( season_stat[0] - stats['PTS']) > 0.75*season_stat[0]:
-        return 1
+    if  ( season_stat[0] - stats['PTS']) > 0.75*season_stat[0]: # If the player has 75% less points than their season average
+        return 1 # Return 1 if the player has 75% less points than their season average
    
-    elif (season_stat[2] - stats['AST']) > 0.5*season_stat[2]:
+    elif (season_stat[2] - stats['AST']) > 0.5*season_stat[2]: # If the player has 50% less assists than their season average
         return 1
+    
     else:
-        return 0
-    return last_game
+        return 0 # Return 0 if the player had a good game
+    
 
 def last_five_games(player_name, game_id, games, season_stat):
 
@@ -67,8 +68,6 @@ def last_five_games(player_name, game_id, games, season_stat):
     else:
         return 2
 
-
-    return None
 
 def game_stats(player_name):
     player_id = player_dictionary[player_name]
