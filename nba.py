@@ -35,7 +35,6 @@ class player_data_training:
     def was_last_game_bad(self, player_name, stats, season_stats):
         ppg=season_stats[0]
         prev_game_points=stats['PTS'] # called in the game_stats function
-
         if  (ppg - prev_game_points) > 0.75*ppg: # If the player has 75% less points than their season average
             return 1 # Return 1 if the player has 75% less points than their season average
             
@@ -87,47 +86,20 @@ class player_data_training:
             return home_or_away_parameter
 
 
-    def opponent_win_percentage(self, game_logs): 
-        games = game_logs.get_data_frames()[0]  # The first DataFrame contains the game logs
-        last_game_stats = None
-        games = games.iloc[::-1].reset_index(drop=True)
-        for index, game in games.iterrows():
-            game_date = game['GAME_DATE']
-            matchup = game['MATCHUP']
-            opponent = matchup.split(' ')[2] if '@' in matchup else matchup.split(' ')[2]
-            opponent_id = self.team_dictionary[opponent]
+    def opponent_win_percentage(self, opponent_id): 
+        Opponent_stats = teamyearbyyearstats.TeamYearByYearStats(team_id=opponent_id)
+        Opponent_stats_df = Opponent_stats.get_data_frames()[0]
+        current_season_stats = Opponent_stats_df[Opponent_stats_df['YEAR'] == '2024-25']
 
-            # Determine if the game is home or away
+        if not current_season_stats.empty:
+            win_percentage = current_season_stats.iloc[0]['WIN_PCT']
+        else:
+            win_percentage = 0
 
-            team_stats = teamyearbyyearstats.TeamYearByYearStats(team_id=opponent_id)
-            team_stats_df = team_stats.get_data_frames()[0]
-            current_season_stats = team_stats_df[team_stats_df['YEAR'] == '2024-25']
-
-            if not current_season_stats.empty:
-                win_percentage = current_season_stats.iloc[0]['WIN_PCT']
-            else:
-                win_percentage = 0
-
-            if last_game_stats:
-                print(f"Last Game Stats: {last_game_stats}")
-                print(f"Date: {last_game_stats['GAME_DATE']}, Points: {last_game_stats['PTS']}, Rebounds: {last_game_stats['REB']}, Assists: {last_game_stats['AST']}")
-                print("-----")
-
-            last_game_stats = {
-                'GAME_DATE': game_date,
-                'PTS': game['PTS'],
-                'REB': game['REB'],
-                'AST': game['AST']
-            }
-
-            # winning season = 1; losing season = 0
-            win_percentage_parameter = 1 if win_percentage > 0.5 else 0 
-
-            
-            # Display game details
-            print(f"Opponent Win Percentage: {win_percentage}")
-            return win_percentage_parameter
-            
+        if win_percentage > 0.5:
+            return 1
+        else:
+            return 0
 
     def game_stats(self, player_name):
         player_id = self.player_dictionary[player_name]
@@ -135,12 +107,21 @@ class player_data_training:
         games = game_logs.get_data_frames()[0]  # The first DataFrame contains the game logs
         season_stat = player_data_training().season_stats(player_name)
         last_game_stats = None
+        
         games = games.iloc[::-1].reset_index(drop=True)
         for index, game in games.iterrows():
             game_date = game['GAME_DATE']
             matchup = game['MATCHUP']
             opponent = matchup.split(' ')[2] if '@' in matchup else matchup.split(' ')[2]
+            opponent_id = self.team_dictionary[opponent]
+            Opponent_stats = teamyearbyyearstats.TeamYearByYearStats(team_id=opponent_id)
+            Opponent_stats_df = Opponent_stats.get_data_frames()[0]
+            current_season_stats = Opponent_stats_df[Opponent_stats_df['YEAR'] == '2024-25']
 
+            if not current_season_stats.empty:
+                win_percentage = current_season_stats.iloc[0]['WIN_PCT']
+            else:
+                win_percentage = 0
             if last_game_stats:
                 print(f"Last Game Stats: {last_game_stats}")
                 print(f"Date: {last_game_stats['GAME_DATE']}, Points: {last_game_stats['PTS']}, Rebounds: {last_game_stats['REB']}, Assists: {last_game_stats['AST']}")
@@ -154,7 +135,7 @@ class player_data_training:
             }
             # parameters to train the model
             home_or_away_parameter = player_data_training().home_or_away(game_logs)
-            opponent_win_percentage_parameter = player_data_training().opponent_win_percentage(game_logs)
+            opponent_win_percentage_parameter = player_data_training().opponent_win_percentage(opponent_id)
             last_game_bad_parameter = player_data_training().was_last_game_bad(player_name, last_game_stats, season_stat)
             last_five_parameter = player_data_training().last_five_games(game['Game_ID'],games, season_stat)
 
