@@ -32,11 +32,12 @@ class player_data_training:
         else:
             return [0, 0, 0]
 
-    def was_last_game_bad(self, player_name, stats, season_stats):
+    def was_last_game_bad(self,  stats, season_stats):
         ppg=season_stats[0]
         prev_game_points=stats['PTS'] # called in the game_stats function
-        if  (ppg - prev_game_points) > 0.75*ppg: # If the player has 75% less points than their season average
-            return 1 # Return 1 if the player has 75% less points than their season average
+        print(f"Ppg: {ppg}, Prev Game Points: {prev_game_points}")
+        if  (ppg - prev_game_points) >= 0.5*ppg: # If the player has 50% less points than their season average
+            return 1 # Return 1 if the player has 50% less points than their season average
             
         else:
             return 0 # Return 0 if the player had a good game
@@ -136,7 +137,7 @@ class player_data_training:
             # parameters to train the model
             home_or_away_parameter = player_data_training().home_or_away(game_logs)
             opponent_win_percentage_parameter = player_data_training().opponent_win_percentage(opponent_id)
-            last_game_bad_parameter = player_data_training().was_last_game_bad(player_name, last_game_stats, season_stat)
+            last_game_bad_parameter = player_data_training().was_last_game_bad( last_game_stats, season_stat)
             last_five_parameter = player_data_training().last_five_games(game['Game_ID'],games, season_stat)
 
             
