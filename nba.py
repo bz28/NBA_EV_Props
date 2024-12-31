@@ -2,6 +2,7 @@ import sys
 from nba_api.stats.static import players, teams
 from nba_api.stats.endpoints import playergamelog, teamgamelog
 from nba_api.stats.endpoints import playerdashboardbyyearoveryear, teamyearbyyearstats
+import time 
 
 
 
@@ -70,21 +71,19 @@ class player_data_training:
 
 
 
-    def home_or_away(self, game_logs):
-        games = game_logs.get_data_frames()[0]  # The first DataFrame contains the game logs
-        games = games.iloc[::-1].reset_index(drop=True)
-        for index, game in games.iterrows():
-            matchup = game['MATCHUP']
+    def home_or_away(self, game):
+        
+        matchup = game['MATCHUP']
 
             # Determine if the game is home or away
-            home_or_away = "away" if "@" in matchup else "home"
+        home_or_away = "away" if "@" in matchup else "home"
 
             # home = 1; away = 0
-            home_or_away_parameter = 1 if home_or_away == 'home' else 0
+        home_or_away_parameter = 1 if home_or_away == 'home' else 0
 
             # Display game details
-            print(f"Home/Away: {home_or_away_parameter}")
-            return home_or_away_parameter
+        print(f"Home/Away: {home_or_away_parameter}")
+        return home_or_away_parameter
 
 
     def opponent_win_percentage(self, opponent_id): 
@@ -111,18 +110,12 @@ class player_data_training:
         
         games = games.iloc[::-1].reset_index(drop=True)
         for index, game in games.iterrows():
+            time.sleep(0.5)  # Sleep for 1 second between requests
             game_date = game['GAME_DATE']
             matchup = game['MATCHUP']
             opponent = matchup.split(' ')[2] if '@' in matchup else matchup.split(' ')[2]
             opponent_id = self.team_dictionary[opponent]
-            Opponent_stats = teamyearbyyearstats.TeamYearByYearStats(team_id=opponent_id)
-            Opponent_stats_df = Opponent_stats.get_data_frames()[0]
-            current_season_stats = Opponent_stats_df[Opponent_stats_df['YEAR'] == '2024-25']
-
-            if not current_season_stats.empty:
-                win_percentage = current_season_stats.iloc[0]['WIN_PCT']
-            else:
-                win_percentage = 0
+            
             if last_game_stats:
                 print(f"Last Game Stats: {last_game_stats}")
                 print(f"Date: {last_game_stats['GAME_DATE']}, Points: {last_game_stats['PTS']}, Rebounds: {last_game_stats['REB']}, Assists: {last_game_stats['AST']}")
@@ -135,7 +128,7 @@ class player_data_training:
                 'AST': game['AST']
             }
             # parameters to train the model
-            home_or_away_parameter = player_data_training().home_or_away(game_logs)
+            home_or_away_parameter = player_data_training().home_or_away(game)
             opponent_win_percentage_parameter = player_data_training().opponent_win_percentage(opponent_id)
             last_game_bad_parameter = player_data_training().was_last_game_bad( last_game_stats, season_stat)
             last_five_parameter = player_data_training().last_five_games(game['Game_ID'],games, season_stat)
@@ -151,7 +144,7 @@ class player_data_training:
             
             print(f"Points: {game['PTS']}, Rebounds: {game['REB']}, Assists: {game['AST']}")
             print("-----")
-
+        time.sleep(5)
 
 # Example usage
 player_data_training().game_stats('Jalen Green')
