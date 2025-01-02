@@ -46,66 +46,15 @@ class player_data_training:
         dashboard = self.make_api_call(playerdashboardbyyearoveryear.PlayerDashboardByYearOverYear, player_id=self.player_dictionary[player_name])
         season_stats = dashboard.get_data_frames()[1]  
         season_dict = season_stats.to_dict('records')
-        stats_2024_25 = None
-        stats_2023_24 = None
-        stats_2022_23 = None
-        stats_2021_22 = None
-        stats_2020_21 = None
+    
+        #adding all season stats to the dictionary
         for item in season_dict:
-            if item['GROUP_VALUE'] == '2024-25':
-                print("hi")
-                stats_2024_25 = item
-               
-            if item['GROUP_VALUE'] == '2023-24':
-                
-                stats_2023_24 = item
-              
-            if item['GROUP_VALUE'] == '2022-23':
-                stats_2022_23 = item
-              
-            if item['GROUP_VALUE'] == '2021-22':
-                stats_2021_22 = item
-               
-            if item['GROUP_VALUE'] == '2020-21':
-                stats_2020_21 = item
-            
-        if stats_2024_25:
-            print("hi")
-            ppg = stats_2024_25['PTS'] / stats_2024_25['GP']
-            reb = stats_2024_25['REB'] / stats_2024_25['GP']
-            ast = stats_2024_25['AST'] / stats_2024_25['GP']
-            print(f"Player Name: {player_name} 2024-25 Stats - PPG: {ppg}, REB: {reb}, AST: {ast}")
-            self.season_stats_dictionary["2024-25"] = [ppg, reb, ast]
-            print(self.season_stats_dictionary)
-         
-        if stats_2023_24:
-            print("gay")
-            ppg = stats_2023_24['PTS'] / stats_2023_24['GP']
-            reb = stats_2023_24['REB'] / stats_2023_24['GP']
-            ast = stats_2023_24['AST'] / stats_2023_24['GP']
-            print(f"Player Name: {player_name} 2023-24 Stats - PPG: {ppg}, REB: {reb}, AST: {ast}")
-            self.season_stats_dictionary["2023-24"] = [ppg, reb, ast]
-            print(self.season_stats_dictionary)
-        if stats_2022_23:
-            ppg = stats_2022_23['PTS'] / stats_2022_23['GP']
-            reb = stats_2022_23['REB'] / stats_2022_23['GP']
-            ast = stats_2022_23['AST'] / stats_2022_23['GP']
-            self.season_stats_dictionary["2022-23"] = [ppg, reb, ast]
-           
-        if stats_2021_22:
-            ppg = stats_2021_22['PTS'] / stats_2021_22['GP']
-            reb = stats_2021_22['REB'] / stats_2021_22['GP']
-            ast = stats_2021_22['AST'] / stats_2021_22['GP']
-            self.season_stats_dictionary["2021-22"] = [ppg, reb, ast]
-            
-        if stats_2020_21:
-            ppg = stats_2020_21['PTS'] / stats_2020_21['GP']
-            reb = stats_2020_21['REB'] / stats_2020_21['GP']
-            ast = stats_2020_21['AST'] / stats_2020_21['GP']
-            self.season_stats_dictionary["2020-21"] = [ppg, reb, ast]
-           
-        
-        return [0, 0, 0]
+            ppg =  item['PTS'] /  item['GP']
+            #reb = stats_2024_25['REB'] / stats_2024_25['GP']
+            #ast = stats_2024_25['AST'] / stats_2024_25['GP']
+            print(f"Player Name: {player_name} {item['GROUP_VALUE']} Stats - PPG: {ppg}")
+            self.season_stats_dictionary[item["GROUP_VALUE"]] = [ppg]  # value=list of season stats including rpg and apg
+        return [0,0,0]
         
 
     def was_last_game_bad(self,  stats, season):
@@ -177,8 +126,9 @@ class player_data_training:
     def game_stats(self, player_name):
         player_id = self.player_dictionary[player_name]
         
-        print("hi", self.season_stats_dictionary)
+
         season_stat = self.season_stats(player_name)
+
         last_game_stats = None
 
         season_points_avg=season_stat[0]
@@ -290,13 +240,14 @@ class player_data_training:
 
 
 # Example usage
-example =  player_data_training()
-count = 0
-for player in example.player_dictionary:
-    if count == 1:
-        break
-    example.game_stats(player)
-    count += 1
+print(player_data_training().season_stats('LeBron James'))
+# example =  player_data_training()
+# count = 0
+# for player in example.player_dictionary:
+#     if count == 1:
+#         break
+#     example.game_stats(player)
+#     count += 1
 
 
 
