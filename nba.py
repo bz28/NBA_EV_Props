@@ -9,14 +9,27 @@ import time
 class player_data_training:
 
     def __init__(self):
-        nba_teams = teams.get_teams()
-        self.team_dictionary = {team['abbreviation']: team['id'] for team in nba_teams}
-        active_players = players.get_active_players()
-        self.player_dictionary = {player['full_name']: player['id'] for player in active_players}
+        self.nba_teams = teams.get_teams()
+        self.team_dictionary = {team['abbreviation']: team['id'] for team in self.nba_teams}
+        self.active_players = players.get_active_players()
+        self.player_dictionary = {player['full_name']: player['id'] for player in self.active_players}
 
+    def make_api_call(self, func, *args, **kwargs):
+        max_retries = 5
+        backoff_factor = 1  # seconds
+        for attempt in range(max_retries):
+            try:
+                response = func(*args, **kwargs)
+                return response
+            except Exception as e:
+                print(f"API call failed: {e}, retrying in {backoff_factor} seconds...")
+                time.sleep(backoff_factor)
+                backoff_factor *= 2  # Exponential backoff
+        print("Failed to retrieve data after several attempts.")
+        return None
 
     def season_stats(self, player_name):
-        dashboard = playerdashboardbyyearoveryear.PlayerDashboardByYearOverYear(player_id=self.player_dictionary[player_name])
+        dashboard = self.make_api_call(playerdashboardbyyearoveryear.PlayerDashboardByYearOverYear, player_id=self.player_dictionary[player_name])
         season_stats = dashboard.get_data_frames()[1]  
         season_dict = season_stats.to_dict('records')
         stats_2024_25 = None
@@ -87,7 +100,7 @@ class player_data_training:
 
 
     def opponent_win_percentage(self, opponent_id): 
-        Opponent_stats = teamyearbyyearstats.TeamYearByYearStats(team_id=opponent_id)
+        Opponent_stats = self.make_api_call(teamyearbyyearstats.TeamYearByYearStats, team_id=opponent_id)
         Opponent_stats_df = Opponent_stats.get_data_frames()[0]
         current_season_stats = Opponent_stats_df[Opponent_stats_df['YEAR'] == '2024-25']
 
@@ -103,8 +116,10 @@ class player_data_training:
 
     def game_stats(self, player_name):
         player_id = self.player_dictionary[player_name]
-        game_logs = playergamelog.PlayerGameLog(player_id=player_id, season='2024-25')
-        games = game_logs.get_data_frames()[0]  # The first DataFrame contains the game logs
+        game_logs = self.make_api_call(playergamelog.PlayerGameLog, player_id=player_id, season='2024-25')
+        if game_logs is None:
+            return
+        games = game_logs.get_data_frames()[0]
         season_stat = player_data_training().season_stats(player_name)
         last_game_stats = None
         
@@ -147,7 +162,13 @@ class player_data_training:
         time.sleep(5)
 
 # Example usage
-player_data_training().game_stats('Jalen Green')
+example =  player_data_training()
+count = 0
+for player in example.player_dictionary:
+    if count == 20:
+        break
+    example.game_stats(player)
+    count += 1
 
 
 
