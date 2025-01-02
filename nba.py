@@ -4,6 +4,12 @@ from nba_api.stats.endpoints import playergamelog, teamgamelog
 from nba_api.stats.endpoints import playerdashboardbyyearoveryear, teamyearbyyearstats
 import time 
 
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+import joblib  # For saving/loading the model
+
 
 
 class player_data_training:
@@ -13,6 +19,11 @@ class player_data_training:
         self.team_dictionary = {team['abbreviation']: team['id'] for team in self.nba_teams}
         self.active_players = players.get_active_players()
         self.player_dictionary = {player['full_name']: player['id'] for player in self.active_players}
+        self.data = pd.DataFrame(columns=[
+            'player_id','home_or_away', 'opponent_win_percentage', 'last_game_bad', 'last_five', 'target'
+        ])
+        self.model = None
+
 
     def make_api_call(self, func, *args, **kwargs):
         max_retries = 5
@@ -123,8 +134,15 @@ class player_data_training:
         games = game_logs.get_data_frames()[0]
         season_stat = player_data_training().season_stats(player_name)
         last_game_stats = None
+
+        season_points_avg=season_stat[0]
         
         games = games.iloc[::-1].reset_index(drop=True)
+
+        
+        
+        new_rows = []  # Use a list to collect new rows
+
         for index, game in games.iterrows():
             time.sleep(0.5)  # Sleep for 1 second between requests
             game_date = game['GAME_DATE']
@@ -133,35 +151,84 @@ class player_data_training:
             opponent_id = self.team_dictionary[opponent]
             
             if last_game_stats:
-                print(f"Last Game Stats: {last_game_stats}")
-                print(f"Date: {last_game_stats['GAME_DATE']}, Points: {last_game_stats['PTS']}, Rebounds: {last_game_stats['REB']}, Assists: {last_game_stats['AST']}")
-                print("-----")
+                last_game_bad_parameter = player_data_training().was_last_game_bad( last_game_stats, season_stat) # 1 if the player has 50% less points than their season average, 0 if the player had a good game
 
+                #print(f"Last Game Stats: {last_game_stats}")
+                #print(f"Date: {last_game_stats['GAME_DATE']}, Points: {last_game_stats['PTS']}, Rebounds: {last_game_stats['REB']}, Assists: {last_game_stats['AST']}")
+                #print("-----")
+
+            else:
+                last_game_bad_parameter= -1 # If there is no last game, return -1
+            # parameters to train the model
+            home_or_away_parameter = player_data_training().home_or_away(game)
+            opponent_win_percentage_parameter = player_data_training().opponent_win_percentage(opponent_id) # 1 if the opponent has a win percentage greater than 50%, 0 if the opponent has a win percentage less than 50% 
+            last_five_parameter = player_data_training().last_five_games(game['Game_ID'],games, season_stat) # 1 if the player has scored more than 50% of their season average in the last 5 games, 0 if the player has scored less than 50% of their season average in the last 5 games, 2 if the player has scored more than 50% of their season average in the last 5 games
+            
             last_game_stats = {
                 'GAME_DATE': game_date,
                 'PTS': game['PTS'],
                 'REB': game['REB'],
                 'AST': game['AST']
             }
-            # parameters to train the model
-            home_or_away_parameter = player_data_training().home_or_away(game)
-            opponent_win_percentage_parameter = player_data_training().opponent_win_percentage(opponent_id) # 1 if the opponent has a win percentage greater than 50%, 0 if the opponent has a win percentage less than 50% 
-            last_game_bad_parameter = player_data_training().was_last_game_bad( last_game_stats, season_stat) # 1 if the player has 50% less points than their season average, 0 if the player had a good game
-            last_five_parameter = player_data_training().last_five_games(game['Game_ID'],games, season_stat) # 1 if the player has scored more than 50% of their season average in the last 5 games, 0 if the player has scored less than 50% of their season average in the last 5 games, 2 if the player has scored more than 50% of their season average in the last 5 games
 
-            
+            # Define target variable (example: `1` if player scored over a certain threshold, otherwise `0`)
+            target = 1 if game['PTS'] > season_points_avg else 0
+            #print(target)
+
+            # append data to new list
+            new_rows.append({
+                'player_id': player_id,
+                'home_or_away': home_or_away_parameter,
+                'opponent_win_percentage': opponent_win_percentage_parameter,
+                'last_game_bad': last_game_bad_parameter,
+                'last_five': last_five_parameter,
+                'target': target
+            })
+
+
             # Display game details
-            print(f"Player ID: {player_id}")
-            print(f"Home/Away: {home_or_away_parameter}")
-            print(f"Opponent Win Percentage: {opponent_win_percentage_parameter}")
-            print(f"Last 5 Games: {last_five_parameter}")
-            print(f"Last Game Bad: {last_game_bad_parameter}")
+            # print(f"Player ID: {player_id}")
+            # print(f"Home/Away: {home_or_away_parameter}")
+            # print(f"Opponent Win Percentage: {opponent_win_percentage_parameter}")
+            # print(f"Last 5 Games: {last_five_parameter}")
+            # print(f"Last Game Bad: {last_game_bad_parameter}")
             #print(f"Game Date: {game_date}")
             #print(f"Opponent: {opponent}")
             
-            print(f"Points: {game['PTS']}, Rebounds: {game['REB']}, Assists: {game['AST']}")
-            print("-----")
+            #print(f"Points: {game['PTS']}, Rebounds: {game['REB']}, Assists: {game['AST']}")
+            #print("-----")
+
+        self.data = pd.concat([self.data, pd.DataFrame(new_rows)], ignore_index=True)
+
+         # Train the model if we have enough data
+        #if len(self.data) > 50:  # Example threshold
+        self.train_model()
+        
+
         time.sleep(5)
+
+
+    def train_model(self):
+        # Split data into features (X) and target (y)
+        X = self.data[['player_id','home_or_away', 'opponent_win_percentage', 'last_game_bad', 'last_five']]
+        y = self.data['target']
+        y = y.astype(int)
+        print("y data type:", y.dtype)
+        # Split into training and testing sets
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        # Train a Random Forest model
+        self.model = RandomForestClassifier(n_estimators=100, random_state=42)
+        self.model.fit(X_train, y_train)
+
+        # Evaluate the model
+        y_pred = self.model.predict(X_test)
+        print("Model Accuracy:", accuracy_score(y_test, y_pred))
+        baseline_accuracy = max(y.value_counts(normalize=True))
+        print(f"Baseline Accuracy: {baseline_accuracy:.2f}")
+        # Save the model for future use
+        #joblib.dump(self.model, 'player_performance_model.pkl')
+
 
 # Example usage
 example =  player_data_training()
