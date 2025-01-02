@@ -41,7 +41,7 @@ class player_data_training:
             ppg = stats_2024_25['PTS'] / stats_2024_25['GP']
             reb = stats_2024_25['REB'] / stats_2024_25['GP']
             ast = stats_2024_25['AST'] / stats_2024_25['GP']
-            print(f"Player Name: {player_name} 2024-25 Stats - PPG: {ppg}, REB: {reb}, AST: {ast}")
+            #print(f"Player Name: {player_name} 2024-25 Stats - PPG: {ppg}, REB: {reb}, AST: {ast}")
             return [ppg, reb, ast]
         else:
             return [0, 0, 0]
@@ -151,6 +151,7 @@ class player_data_training:
 
             
             # Display game details
+            print(f"Player ID: {player_id}")
             print(f"Home/Away: {home_or_away_parameter}")
             print(f"Opponent Win Percentage: {opponent_win_percentage_parameter}")
             print(f"Last 5 Games: {last_five_parameter}")
@@ -166,7 +167,7 @@ class player_data_training:
 example =  player_data_training()
 count = 0
 for player in example.player_dictionary:
-    if count == 20:
+    if count == 1:
         break
     example.game_stats(player)
     count += 1
