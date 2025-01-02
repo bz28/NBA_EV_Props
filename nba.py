@@ -110,9 +110,10 @@ class player_data_training:
             win_percentage = 0
 
         if win_percentage > 0.5:
-            return 1
+            return 1     # 1 if the opponent has a win percentage greater than 50%
         else:
-            return 0
+            return 0     # 0 if the opponent has a win percentage less than 50%
+        
 
     def game_stats(self, player_name):
         player_id = self.player_dictionary[player_name]
@@ -144,9 +145,9 @@ class player_data_training:
             }
             # parameters to train the model
             home_or_away_parameter = player_data_training().home_or_away(game)
-            opponent_win_percentage_parameter = player_data_training().opponent_win_percentage(opponent_id)
-            last_game_bad_parameter = player_data_training().was_last_game_bad( last_game_stats, season_stat)
-            last_five_parameter = player_data_training().last_five_games(game['Game_ID'],games, season_stat)
+            opponent_win_percentage_parameter = player_data_training().opponent_win_percentage(opponent_id) # 1 if the opponent has a win percentage greater than 50%, 0 if the opponent has a win percentage less than 50% 
+            last_game_bad_parameter = player_data_training().was_last_game_bad( last_game_stats, season_stat) # 1 if the player has 50% less points than their season average, 0 if the player had a good game
+            last_five_parameter = player_data_training().last_five_games(game['Game_ID'],games, season_stat) # 1 if the player has scored more than 50% of their season average in the last 5 games, 0 if the player has scored less than 50% of their season average in the last 5 games, 2 if the player has scored more than 50% of their season average in the last 5 games
 
             
             # Display game details
