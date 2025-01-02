@@ -73,26 +73,21 @@ class player_data_training:
         start_index = max(0, game_index - 5)
         last_five_games = games.iloc[start_index:game_index]
 
-        above_avg = True
-
-        below_avg = True
-
+        total_points=0
         
         for index, game in last_five_games.iterrows():
             points = game['PTS']
         
-            if points > season_stats[0]:
-                below_avg = False
-            else:
-                above_avg = False
+            total_points+=points
+        
+        avg_points = total_points/5
             
-        if above_avg:
+        if avg_points >= season_stats[0]*1.25:
             return 1
-        elif below_avg:
-            return 0 
+        elif avg_points <= season_stats[0]*0.75: 
+            return 0
         else:
             return 2
-
 
 
     def home_or_away(self, game):
