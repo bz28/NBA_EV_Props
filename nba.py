@@ -5,9 +5,9 @@ from nba_api.stats.endpoints import playerdashboardbyyearoveryear, teamyearbyyea
 import time 
 
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+# from sklearn.ensemble import RandomForestClassifier
+# from sklearn.model_selection import train_test_split
+# from sklearn.metrics import accuracy_score
 # import joblib  # For saving/loading the model
 
 
@@ -113,12 +113,18 @@ class player_data_training:
         last_game_stats = None
         new_rows = [] 
         count=0  # track total # of seasons
-        for season in self.season_stats_dictionary:
-            print(season)
+        previous_season = None # previous season to use if the player has played for less than 10 games in a season
+        sorted_seasons = sorted(self.season_stats_dictionary.keys()) # want to get the seasons in order
+       
+        for season in sorted_seasons:
+            # calculate average points per game for the current season up to the current game
+            current_season_games_count = 0
+            current_season_games_points_sum = 0
+            current_season_games_points_avg = 0
             ###
             ###
             # if the player has played for more than 1 team in a season, we need to handle this
-            season_points_avg=sum(self.season_stats_dictionary[season])/len(self.season_stats_dictionary[season])
+            #season_points_avg=sum(self.season_stats_dictionary[season])/len(self.season_stats_dictionary[season])
             ###
             ###
             game_logs = self.make_api_call(playergamelog.PlayerGameLog, player_id=player_id, season=season)
@@ -129,6 +135,12 @@ class player_data_training:
             self.season_games_dictionary[season] = games
             for index, game in games.iterrows():
                 time.sleep(0.5) # Avoid rate limiting
+                current_season_games_count +=1
+                current_season_games_points_sum += game['PTS']
+              
+                current_season_games_points_avg = current_season_games_points_sum/current_season_games_count
+       
+
                 game_date = game['GAME_DATE']
                 matchup = game['MATCHUP']
                 opponent = matchup.split(' ')[2] if '@' in matchup else matchup.split(' ')[2]
@@ -148,7 +160,24 @@ class player_data_training:
                     'AST': game['AST']
                 }
                 # Define target variable (example: `1` if player scored over a certain threshold, otherwise `0`)
+  
+               
+               # if the player has played for less than 10 games in a season, we need to use the previous season's stats
+                if current_season_games_count < 10 and previous_season:
+                    
+                    season_points_avg = sum(self.season_stats_dictionary[previous_season])/len(self.season_stats_dictionary[previous_season])
+                elif current_season_games_count < 10 and not previous_season:
+                    season_points_avg = 0
+                else:
+                    season_points_avg = current_season_games_points_avg
+              
+                
+           
+                
                 target = 1 if game['PTS'] > season_points_avg else 0
+                
+
+
                 new_rows.append({
                     'player_id': player_id,
                     'home_or_away': home_or_away_parameter,
@@ -157,9 +186,12 @@ class player_data_training:
                     'last_five': last_five_parameter,
                     'target': target
                 })
+                
             count+=1
             if count==10:  # only get the last 10 seasons
                 break
+        
+            previous_season = season
                 #Display game details
                 # print(f"Player ID: {player_id}")
                 # print(f"Home/Away: {home_or_away_parameter}")
@@ -169,7 +201,7 @@ class player_data_training:
                 # print(f"Game Date: {game_date}")
                 # print(f"Opponent: {opponent}")
                 # print(f"Points: {game['PTS']}, Rebounds: {game['REB']}, Assists: {game['AST']}")
-                # print("-----")
+        #         # print("-----")
         self.data = pd.concat([self.data, pd.DataFrame(new_rows)], ignore_index=True)
         self.train_model()
         time.sleep(2)
@@ -194,7 +226,7 @@ class player_data_training:
 
 
 # Example usage
-player_data_training().game_stats('LeBron James')
+player_data_training().game_stats('Jalen Green')
 # example =  player_data_training()
 # count = 0
 # for player in example.player_dictionary:
