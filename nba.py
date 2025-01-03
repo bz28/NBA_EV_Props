@@ -4,10 +4,10 @@ from nba_api.stats.endpoints import playergamelog, teamgamelog
 from nba_api.stats.endpoints import playerdashboardbyyearoveryear, teamyearbyyearstats
 import time 
 
-# import pandas as pd
-# from sklearn.ensemble import RandomForestClassifier
-# from sklearn.model_selection import train_test_split
-# from sklearn.metrics import accuracy_score
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 # import joblib  # For saving/loading the model
 
 
@@ -22,10 +22,11 @@ class player_data_training:
         self.season_stats_dictionary = {}
         self.season_games_dictionary = {}
 
-       # self.data = pd.DataFrame(columns=[
-       #     'player_id','home_or_away', 'opponent_win_percentage', 'last_game_bad', 'last_five', 'target'
-       # ])
-        #self.model = None
+        self.data = pd.DataFrame(columns=[
+           'player_id','home_or_away', 'opponent_win_percentage', 'last_game_bad', 'last_five', 'target'
+       ])
+        
+        self.model = None
 
 
     def make_api_call(self, func, *args, **kwargs):
@@ -41,28 +42,14 @@ class player_data_training:
                 backoff_factor *= 2  # Exponential backoff
         print("Failed to retrieve data after several attempts.")
         return None
-
-    def season_stats(self, player_name ):
-        dashboard = self.make_api_call(playerdashboardbyyearoveryear.PlayerDashboardByYearOverYear, player_id=self.player_dictionary[player_name])
-        season_stats = dashboard.get_data_frames()[1]  
-        season_dict = season_stats.to_dict('records')
-    
-        #adding all season stats to the dictionary
-        for item in season_dict:
-            ppg =  item['PTS'] /  item['GP']
-            #reb = stats_2024_25['REB'] / stats_2024_25['GP']
-            #ast = stats_2024_25['AST'] / stats_2024_25['GP']
-            print(f"Player Name: {player_name} {item['GROUP_VALUE']} Stats - PPG: {ppg}")
-            self.season_stats_dictionary[item["GROUP_VALUE"]] = [ppg]  # value=list of season stats including rpg and apg
-        return [0,0,0]
         
 
     def was_last_game_bad(self,  stats, season):
         season_stats = self.season_stats_dictionary[season]
         ppg=season_stats[0]
-        prev_game_points=stats['PTS'] # called in the game_stats function
+        prev_game_points=stats['PTS'] 
         #print(f"Ppg: {ppg}, Prev Game Points: {prev_game_points}")
-        if  (ppg - prev_game_points) >= 0.5*ppg: # If the player has 50% less points than their season average
+        if  (ppg - prev_game_points) >= 0.5*ppg: 
             return 1 # Return 1 if the player has 50% less points than their season average
             
         else:
@@ -96,14 +83,11 @@ class player_data_training:
         
         matchup = game['MATCHUP']
 
-            # Determine if the game is home or away
         home_or_away = "away" if "@" in matchup else "home"
 
-            # home = 1; away = 0
+        # home = 1; away = 0
         home_or_away_parameter = 1 if home_or_away == 'home' else 0
 
-            # Display game details
-        #print(f"Home/Away: {home_or_away_parameter}")
         return home_or_away_parameter
 
 
@@ -118,26 +102,46 @@ class player_data_training:
             win_percentage = 0
 
         if win_percentage > 0.5:
-            return 1     # 1 if the opponent has a win percentage greater than 50%
+            return 1     
         else:
-            return 0     # 0 if the opponent has a win percentage less than 50%
+            return 0     
         
+    def season_stats(self, player_name ):
+        dashboard = self.make_api_call(playerdashboardbyyearoveryear.PlayerDashboardByYearOverYear, player_id=self.player_dictionary[player_name])
+        season_stats = dashboard.get_data_frames()[1]  
+        season_dict = season_stats.to_dict('records')
+    
+        #adding all season stats to the dictionary
+        for item in season_dict:
+            ###
+            ###
+            # how should we handle if they play for multiple teams in a season?    
+            if item['GROUP_VALUE'] in self.season_stats_dictionary:
+                ppg=item['PTS'] /  item['GP']
+                self.season_stats_dictionary[item['GROUP_VALUE']].append(ppg)
+                continue
+            ###
+            ###        
 
+            ppg =  item['PTS'] /  item['GP']
+            # print(f"Player Name: {player_name} {item['GROUP_VALUE']} Stats - PPG: {ppg}")
+            self.season_stats_dictionary[item["GROUP_VALUE"]] = [ppg]  # value=list of season stats including rpg and apg
+        return None
+    
     def game_stats(self, player_name):
         player_id = self.player_dictionary[player_name]
-        
-
-        season_stat = self.season_stats(player_name)
-
+        season_stat = self.season_stats(player_name) # must be called to invoke season_stats_dictionary
         last_game_stats = None
+        print(self.season_stats_dictionary)
+        new_rows = [] 
 
-        season_points_avg=season_stat[0]
-     
-
-        
-       
-        new_rows = []  # Use a list to collect new rows
         for season in self.season_stats_dictionary:
+            ###
+            ###
+            # if the player has played for more than 1 team in a season, we need to handle this
+            season_points_avg=sum(self.season_stats_dictionary[season])/len(self.season_stats_dictionary[season])
+            ###
+            ###
             game_logs = self.make_api_call(playergamelog.PlayerGameLog, player_id=player_id, season=season)
 
             if game_logs is None:
@@ -145,9 +149,6 @@ class player_data_training:
             games = game_logs.get_data_frames()[0]
             games = games.iloc[::-1].reset_index(drop=True)
             self.season_games_dictionary[season] = games
-
-
-        
 
             for index, game in games.iterrows():
                 time.sleep(0.5)  # Sleep for 1 second between requests
@@ -179,75 +180,70 @@ class player_data_training:
 
                 # Define target variable (example: `1` if player scored over a certain threshold, otherwise `0`)
                 target = 1 if game['PTS'] > season_points_avg else 0
-                #print(target)
 
                 # append data to new list
-                # new_rows.append({
-                #     'player_id': player_id,
-                #     'home_or_away': home_or_away_parameter,
-                #     'opponent_win_percentage': opponent_win_percentage_parameter,
-                #     'last_game_bad': last_game_bad_parameter,
-                #     'last_five': last_five_parameter,
-                #     'target': target
-                # })
+                new_rows.append({
+                    'player_id': player_id,
+                    'home_or_away': home_or_away_parameter,
+                    'opponent_win_percentage': opponent_win_percentage_parameter,
+                    'last_game_bad': last_game_bad_parameter,
+                    'last_five': last_five_parameter,
+                    'target': target
+                })
 
 
-                # Display game details
-                print(f"Player ID: {player_id}")
-                print(f"Home/Away: {home_or_away_parameter}")
-                print(f"Opponent Win Percentage: {opponent_win_percentage_parameter}")
-                print(f"Last 5 Games: {last_five_parameter}")
-                print(f"Last Game Bad: {last_game_bad_parameter}")
-                print(f"Game Date: {game_date}")
-                print(f"Opponent: {opponent}")
+                #Display game details
+                # print(f"Player ID: {player_id}")
+                # print(f"Home/Away: {home_or_away_parameter}")
+                # print(f"Opponent Win Percentage: {opponent_win_percentage_parameter}")
+                # print(f"Last 5 Games: {last_five_parameter}")
+                # print(f"Last Game Bad: {last_game_bad_parameter}")
+                # print(f"Game Date: {game_date}")
+                # print(f"Opponent: {opponent}")
                 
-                print(f"Points: {game['PTS']}, Rebounds: {game['REB']}, Assists: {game['AST']}")
-                print("-----")
+                # print(f"Points: {game['PTS']}, Rebounds: {game['REB']}, Assists: {game['AST']}")
+                # print("-----")
 
-        # self.data = pd.concat([self.data, pd.DataFrame(new_rows)], ignore_index=True)
+        self.data = pd.concat([self.data, pd.DataFrame(new_rows)], ignore_index=True)
 
-            # Train the model if we have enough data
-            #if len(self.data) > 50:  # Example threshold
-        # self.train_model()
+        self.train_model()
             
 
-            time.sleep(5)
         time.sleep(2)
 
 
 
    
-    # def train_model(self):
-    #     # Split data into features (X) and target (y)
-    #     X = self.data[['player_id','home_or_away', 'opponent_win_percentage', 'last_game_bad', 'last_five']]
-    #     y = self.data['target']
-    #     y = y.astype(int)
-    #     print("y data type:", y.dtype)
-    #     # Split into training and testing sets
-    #     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    def train_model(self):
+        # Split data into features (X) and target (y)
+        X = self.data[['player_id','home_or_away', 'opponent_win_percentage', 'last_game_bad', 'last_five']]
+        y = self.data['target']
+        y = y.astype(int)
+        print("y data type:", y.dtype)
+        # Split into training and testing sets
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    #     # Train a Random Forest model
-    #     self.model = RandomForestClassifier(n_estimators=100, random_state=42)
-    #     self.model.fit(X_train, y_train)
+        # Train a Random Forest model
+        self.model = RandomForestClassifier(n_estimators=100, random_state=42)
+        self.model.fit(X_train, y_train)
 
-    #     # Evaluate the model
-    #     y_pred = self.model.predict(X_test)
-    #     print("Model Accuracy:", accuracy_score(y_test, y_pred))
-    #     baseline_accuracy = max(y.value_counts(normalize=True))
-    #     print(f"Baseline Accuracy: {baseline_accuracy:.2f}")
-    #     # Save the model for future use
-    #     #joblib.dump(self.model, 'player_performance_model.pkl')
+        # Evaluate the model
+        y_pred = self.model.predict(X_test)
+        print("Model Accuracy:", accuracy_score(y_test, y_pred))
+        baseline_accuracy = max(y.value_counts(normalize=True))
+        print(f"Baseline Accuracy: {baseline_accuracy:.2f}")
+        # Save the model for future use
+        #joblib.dump(self.model, 'player_performance_model.pkl')
 
 
 # Example usage
-print(player_data_training().season_stats('LeBron James'))
-# example =  player_data_training()
-# count = 0
-# for player in example.player_dictionary:
-#     if count == 1:
-#         break
-#     example.game_stats(player)
-#     count += 1
+example =  player_data_training()
+count = 0
+for player in example.player_dictionary:
+    if count == 1:
+        break
+    example.game_stats(player)
+    count += 1
 
 
 
