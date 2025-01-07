@@ -5,9 +5,9 @@ from nba_api.stats.endpoints import playerdashboardbyyearoveryear, teamyearbyyea
 import time 
 
 import pandas as pd
-# from sklearn.ensemble import RandomForestClassifier
-# from sklearn.model_selection import train_test_split
-# from sklearn.metrics import accuracy_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 # import joblib  # For saving/loading the model
 
 
@@ -164,7 +164,6 @@ class player_data_training:
                
                # if the player has played for less than 10 games in a season, we need to use the previous season's stats
                 if current_season_games_count < 10 and previous_season:
-                    
                     season_points_avg = sum(self.season_stats_dictionary[previous_season])/len(self.season_stats_dictionary[previous_season])
                 elif current_season_games_count < 10 and not previous_season:
                     season_points_avg = 0
@@ -188,7 +187,7 @@ class player_data_training:
                 })
                 
             count+=1
-            if count==10:  # only get the last 10 seasons
+            if count==3:  # only get the last 3 seasons
                 break
         
             previous_season = season
