@@ -5,9 +5,9 @@ from nba_api.stats.endpoints import playerdashboardbyyearoveryear, teamyearbyyea
 import time 
 
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+# from sklearn.ensemble import RandomForestClassifier
+# from sklearn.model_selection import train_test_split
+# from sklearn.metrics import accuracy_score
 # import joblib  # For saving/loading the model
 
 
@@ -22,7 +22,7 @@ class player_data_training:
         self.season_stats_dictionary = {}
         self.season_games_dictionary = {}
         self.data = pd.DataFrame(columns=[
-           'player_id','home_or_away', 'opponent_win_percentage', 'last_game_bad', 'last_five', 'target'
+           'player_id','home_or_away', 'opponent_win_percentage', 'last_game_bad', 'last_five', 'starter','target'
         ])
         self.model = None
 
@@ -115,7 +115,9 @@ class player_data_training:
         count=0  # track total # of seasons
         previous_season = None # previous season to use if the player has played for less than 10 games in a season
         sorted_seasons = sorted(self.season_stats_dictionary.keys()) # want to get the seasons in order
-       
+        
+        sorted_seasons = [season for season in sorted_seasons if int(season[5:7]) >= 23] # only get the last 3 seasons
+     
         for season in sorted_seasons:
             # calculate average points per game for the current season up to the current game
             current_season_games_count = 0
@@ -153,6 +155,7 @@ class player_data_training:
                 home_or_away_parameter = self.home_or_away(game)
                 opponent_win_percentage_parameter = self.opponent_win_percentage(opponent_id, season) # 1 if the opponent has a win percentage greater than 50%, 0 if the opponent has a win percentage less than 50% 
                 last_five_parameter = self.last_five_games(game['Game_ID'],games, season) # 1 if the player has scored more than 50% of their season average in the last 5 games, 0 if the player has scored less than 50% of their season average in the last 5 games, 2 if the player has scored more than 50% of their season average in the last 5 games
+                starter_parameter = 1 if game['MIN'] >= 25 else 0  # 1 if the player has played more than 25 minutes, 0 if the player has played less than 25 minutes
                 last_game_stats = {
                     'GAME_DATE': game_date,
                     'PTS': game['PTS'],
@@ -175,7 +178,7 @@ class player_data_training:
                 
                 target = 1 if game['PTS'] > season_points_avg else 0
                 
-
+               
 
                 new_rows.append({
                     'player_id': player_id,
@@ -183,12 +186,11 @@ class player_data_training:
                     'opponent_win_percentage': opponent_win_percentage_parameter,
                     'last_game_bad': last_game_bad_parameter,
                     'last_five': last_five_parameter,
+                    'starter': starter_parameter,
                     'target': target
                 })
                 
-            count+=1
-            if count==3:  # only get the last 3 seasons
-                break
+            
         
             previous_season = season
                 #Display game details
@@ -225,7 +227,7 @@ class player_data_training:
 
 
 # Example usage
-player_data_training().game_stats('Jalen Green')
+player_data_training().game_stats('Tari Eason')
 # example =  player_data_training()
 # count = 0
 # for player in example.player_dictionary:
@@ -233,7 +235,6 @@ player_data_training().game_stats('Jalen Green')
 #         break
 #     example.game_stats(player)
 #     count += 1
-
 
 
 
