@@ -2,13 +2,14 @@ import sys
 from nba_api.stats.static import players, teams
 from nba_api.stats.endpoints import playergamelog, teamgamelog
 from nba_api.stats.endpoints import playerdashboardbyyearoveryear, teamyearbyyearstats
+from datetime import datetime
 import time 
 
 import pandas as pd
-# from sklearn.ensemble import RandomForestClassifier
-# from sklearn.model_selection import train_test_split
-# from sklearn.metrics import accuracy_score
-# import joblib  # For saving/loading the model
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+import joblib  # For saving/loading the model
 
 
 
@@ -107,6 +108,19 @@ class player_data_training:
             self.season_stats_dictionary[item["GROUP_VALUE"]] = [ppg]  # value=list of season stats including rpg and apg
         return None
     
+
+
+    def back_to_back_parameter(self, previous_game_date, current_game_date):
+        # Convert string dates to datetime objects using the NBA API format
+        prev_date = datetime.strptime(previous_game_date.title(), '%b %d, %Y')
+        curr_date = datetime.strptime(current_game_date.title(), '%b %d, %Y')
+
+        # Calculate the difference in days
+        days_difference = (curr_date - prev_date).days
+
+        # Return 1 if it's a back-to-back (1 day difference), 0 otherwise
+        return 1 if days_difference == 1 else 0
+
     def game_stats(self, player_name):
         player_id = self.player_dictionary[player_name]
         season_stat = self.season_stats(player_name) # must be called to invoke season_stats_dictionary
@@ -147,10 +161,13 @@ class player_data_training:
                 matchup = game['MATCHUP']
                 opponent = matchup.split(' ')[2] if '@' in matchup else matchup.split(' ')[2]
                 opponent_id = self.team_dictionary[opponent]
+
                 if last_game_stats:
-                    last_game_bad_parameter = self.was_last_game_bad( last_game_stats, season) # 1 if the player has 50% less points than their season average, 0 if the player had a good game
+                    last_game_bad_parameter = self.was_last_game_bad( last_game_stats, season)
+                    back_to_back_parameter = self.back_to_back_parameter(last_game_stats['GAME_DATE'], game_date)
                 else:
-                    last_game_bad_parameter= -1 # If there is no last game, return -1
+                    last_game_bad_parameter= -1
+                    back_to_back_parameter = -1 # If there is no last game, return -1
                 # parameters to train the model
                 home_or_away_parameter = self.home_or_away(game)
                 opponent_win_percentage_parameter = self.opponent_win_percentage(opponent_id, season) # 1 if the opponent has a win percentage greater than 50%, 0 if the opponent has a win percentage less than 50% 
@@ -187,28 +204,31 @@ class player_data_training:
                     'last_game_bad': last_game_bad_parameter,
                     'last_five': last_five_parameter,
                     'starter': starter_parameter,
+                    'back_to_back': back_to_back_parameter,
                     'target': target
                 })
-                
-            
-        
-            previous_season = season
                 #Display game details
                 # print(f"Player ID: {player_id}")
                 # print(f"Home/Away: {home_or_away_parameter}")
                 # print(f"Opponent Win Percentage: {opponent_win_percentage_parameter}")
                 # print(f"Last 5 Games: {last_five_parameter}")
                 # print(f"Last Game Bad: {last_game_bad_parameter}")
+                # print(f"Back to Back: {back_to_back_parameter}")
                 # print(f"Game Date: {game_date}")
                 # print(f"Opponent: {opponent}")
                 # print(f"Points: {game['PTS']}, Rebounds: {game['REB']}, Assists: {game['AST']}")
-        #         # print("-----")
+                # print("-----")
+
+        
+            previous_season = season
+            
+                
         self.data = pd.concat([self.data, pd.DataFrame(new_rows)], ignore_index=True)
         self.train_model()
         time.sleep(2)
    
     def train_model(self):
-        X = self.data[['player_id','home_or_away', 'opponent_win_percentage', 'last_game_bad', 'last_five']]
+        X = self.data[['player_id','home_or_away', 'opponent_win_percentage', 'last_game_bad', 'last_five', 'starter', 'back_to_back']]
         y = self.data['target']
         y = y.astype(int)
         print("y data type:", y.dtype)
@@ -227,7 +247,7 @@ class player_data_training:
 
 
 # Example usage
-player_data_training().game_stats('Tari Eason')
+player_data_training().game_stats('Fred VanVleet')
 # example =  player_data_training()
 # count = 0
 # for player in example.player_dictionary:
